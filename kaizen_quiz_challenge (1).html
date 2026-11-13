@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full bg-slate-900">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kaizen Quiz Challenge - ระบบควิซไคเซ็นแบบลงทะเบียนล่วงหน้า</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065f46',
+                            900: '#064e3b',
+                        },
+                        industrial: {
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Kanit', 'Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts: Kanit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="h-full text-slate-100 flex flex-col justify-between selection:bg-emerald-500 selection:text-white">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-industrial-800/90 backdrop-blur-md border-b border-slate-700/60 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="app.navigateHome()">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 font-black text-xl shadow-lg shadow-emerald-500/20">
+                    K
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg tracking-tight text-white leading-none">KAIZEN QUIZ</h1>
+                    <span class="text-xs text-emerald-400 font-medium">ระบบตอบคำถามสะสมคะแนน</span>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2 sm:space-x-4">
+                <!-- User Profile Badge (If Logged In) -->
+                <div id="navUserBadge" class="hidden items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <span id="navUserName" class="text-xs font-semibold text-slate-200"></span>
+                    <button onclick="app.logoutUser()" title="ออกจากระบบ" class="text-slate-400 hover:text-rose-400 text-xs ml-1">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+
+                <!-- Data Status Badge -->
+                <button onclick="app.openGasModal()" id="statusBadge" class="text-xs px-3 py-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 flex items-center space-x-1.5 hover:bg-emerald-500/20 transition">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Google Sheets</span>
+                    <i class="fa-solid fa-gear text-emerald-400 text-xs ml-1"></i>
+                </button>
+
+                <!-- Admin Toggle Button -->
+                <button onclick="app.promptAdminAuth()" id="roleToggleBtn" class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-slate-700 hover:bg-slate-600 border border-slate-600 text-slate-200 transition flex items-center space-x-2">
+                    <i class="fa-solid fa-user-shield text-emerald-400"></i>
+                    <span id="roleToggleText">สำหรับ Admin</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dynamic Content Container -->
+    <main class="flex-grow flex items-center justify-center p-4 sm:p-6 md:p-8" id="mainContainer">
+        
+        <!-- 1. AUTH SCREEN (Pre-Registration & Login Tabs) -->
+        <section id="viewAuth" class="w-full max-w-md mx-auto py-4 space-y-6">
+            <div class="text-center space-y-2">
+                <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium">
+                    <i class="fa-solid fa-user-check"></i>
+                    <span>ระบบพนักงาน 200+ คน • ใช้รหัสพนักงานเข้าใช้งาน</span>
+                </div>
+                <h2 class="text-3xl font-extrabold text-white tracking-tight">
+                    Kaizen <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">Challenge</span>
+                </h2>
+                <p class="text-slate-400 text-xs sm:text-sm">
+                    ลงทะเบียนล่วงหน้า หรือเข้าสู่ระบบเพื่อตอบคำถามที่ Admin เปิดให้ทำ
+                </p>
+            </div>
+
+            <!-- Auth Box with Tabs -->
+            <div class="glass-card rounded-2xl p-6 shadow-2xl border border-slate-700 space-y-6">
+                <!-- Tabs -->
+                <div class="grid grid-cols-2 gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
+                    <button id="tabBtnLogin" onclick="app.switchAuthTab('login')" class="py-2.5 rounded-lg bg-emerald-500 text-slate-950 font-bold transition">
+                        <i class="fa-solid fa-right-to-bracket mr-1"></i> เข้าสู่ระบบ
+                    </button>
+                    <button id="tabBtnRegister" onclick="app.switchAuthTab('register')" class="py-2.5 rounded-lg text-slate-400 hover:text-white transition">
+                        <i class="fa-solid fa-user-plus mr-1"></i> ลงทะเบียนล่วงหน้า
+                    </button>
+                </div>
+
+                <!-- LOGIN FORM -->
+                <form id="formLogin" onsubmit="app.handleLogin(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">
+                            รหัสพนักงาน (ขึ้นต้นด้วย S ตามด้วยเลข 4 หลัก) <span class="text-rose-400">*</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-sm font-mono">
+                                <i class="fa-solid fa-id-badge"></i>
+                            </span>
+                            <input type="text" id="loginEmpId" required placeholder="ตัวอย่าง: S1234" maxlength="5"
+                                oninput="this.value = this.value.toUpperCase()"
+                                class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-800/90 border border-slate-700 text-white font-mono placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition uppercase">
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1">ใส่อักษร S และตัวเลข 4 หลัก เช่น S0001, S1234</p>
+                    </div>
+
+                    <button type="submit" class="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-bold text-base shadow-lg shadow-emerald-500/20 transition flex items-center justify-center space-x-2">
+                        <span>เข้าสู่ระบบตอบคำถาม</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </form>
+
+                <!-- PRE-REGISTRATION FORM -->
+                <form id="formRegister" onsubmit="app.handleRegister(event)" class="hidden space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">
+                            รหัสพนักงาน <span class="text-rose-400">* (รูปแบบ SXXXX)</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-sm font-mono">
+                                <i class="fa-solid fa-hashtag"></i>
+                            </span>
+                            <input type="text" id="regEmpId" required placeholder="เช่น S1234" maxlength="5"
+                                oninput="this.value = this.value.toUpperCase()"
+                                class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-800/90 border border-slate-700 text-white font-mono placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition uppercase">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">
+                            ชื่อ - นามสกุล <span class="text-rose-400">*</span>
+                        </label>
+                        <input type="text" id="regFullName" required placeholder="เช่น นายสมชาย สายไคเซ็น"
+                            class="w-full px-4 py-3 rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">
+                            ฝ่ายงาน / แผนก <span class="text-rose-400">*</span>
+                        </label>
+                        <input type="text" id="regDept" required placeholder="เช่น ฝ่ายการผลิต, ซ่อมบำรุง, QA/QC, วางแผน"
+                            class="w-full px-4 py-3 rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition">
+                    </div>
+
+                    <button type="submit" class="w-full py-3.5 px-6 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-base shadow-lg shadow-emerald-500/20 transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-save"></i>
+                        <span>บันทึกการลงทะเบียน</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- View Leaderboard Shortcut -->
+            <div class="text-center">
+                <button onclick="app.showLeaderboardView()" class="text-xs text-slate-400 hover:text-emerald-400 transition inline-flex items-center space-x-1">
+                    <i class="fa-solid fa-trophy text-amber-400"></i>
+                    <span>ดูตารางอันดับคะแนนทั้งหมด (Leaderboard)</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- 2. PLAYER DASHBOARD (QUESTION LIST) -->
+        <section id="viewPlayerDashboard" class="hidden w-full max-w-3xl mx-auto space-y-6">
+            <!-- User Info Card -->
+            <div class="glass-card p-6 rounded-2xl border border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="space-y-1">
+                    <div class="flex items-center space-x-2">
+                        <span class="px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 font-mono font-bold text-xs border border-emerald-500/30" id="dashEmpId">S1234</span>
+                        <h3 class="text-xl font-bold text-white" id="dashFullName">สมชาย สายไคเซ็น</h3>
+                    </div>
+                    <p class="text-xs text-slate-400" id="dashDept">ฝ่ายงาน: Production (การผลิต)</p>
+                </div>
+
+                <div class="bg-slate-900/90 px-6 py-3 rounded-xl border border-slate-800 text-center sm:text-right w-full sm:w-auto">
+                    <span class="text-[10px] text-slate-400 uppercase font-semibold block">คะแนนสะสมรวม</span>
+                    <div class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200" id="dashTotalScore">
+                        0
+                    </div>
+                </div>
+            </div>
+
+            <!-- Questions Status Header -->
+            <div class="flex justify-between items-center">
+                <div>
+                    <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+                        <i class="fa-solid fa-list-check text-emerald-400"></i>
+                        <span>รายการคำถาม Kaizen Quiz</span>
+                    </h3>
+                    <p class="text-xs text-slate-400">เลือกคำถามที่ Admin เปิดให้ตอบในขณะนี้ (ไม่จำกัดเวลา)</p>
+                </div>
+                <button onclick="app.fetchInitData()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-slate-700 flex items-center space-x-1">
+                    <i class="fa-solid fa-rotate"></i>
+                    <span>อัปเดตข้อมูล</span>
+                </button>
+            </div>
+
+            <!-- Question Cards Grid -->
+            <div id="playerQuestionList" class="grid grid-cols-1 gap-4">
+                <!-- Rendered dynamically -->
+            </div>
+        </section>
+
+        <!-- 3. PLAYER QUESTION ANSWER MODAL / VIEW -->
+        <section id="viewQuestionDetail" class="hidden w-full max-w-xl mx-auto space-y-4">
+            <button onclick="app.showPlayerDashboard()" class="text-xs text-slate-400 hover:text-white flex items-center space-x-1.5">
+                <i class="fa-solid fa-chevron-left"></i>
+                <span>กลับสู่รายการคำถาม</span>
+            </button>
+
+            <div class="glass-card p-6 sm:p-8 rounded-2xl border border-slate-700 space-y-6">
+                <!-- Question Badge -->
+                <div class="flex items-center justify-between">
+                    <span class="px-3 py-1 rounded-md bg-emerald-500/20 text-emerald-400 font-semibold text-xs border border-emerald-500/30" id="qDetailCategory">
+                        หมวดหมู่: 5S
+                    </span>
+                    <span class="text-xs text-slate-400 font-mono" id="qDetailIndex">ข้อที่ 1</span>
+                </div>
+
+                <!-- Question Text -->
+                <h3 class="text-lg sm:text-xl font-bold text-white leading-relaxed" id="qDetailText">
+                    โจทย์คำถาม...
+                </h3>
+
+                <!-- Options -->
+                <div class="space-y-3" id="qDetailChoices">
+                    <!-- Choices rendered dynamically -->
+                </div>
+
+                <!-- Submission Status / Past Choice Info -->
+                <div id="qDetailFeedback" class="hidden p-4 rounded-xl text-center space-y-1">
+                    <div id="qDetailFeedbackTitle" class="text-base font-bold"></div>
+                    <p id="qDetailFeedbackSub" class="text-xs"></p>
+                </div>
+
+                <!-- Submit Button -->
+                <button id="btnSubmitAnswer" onclick="app.submitSelectedAnswer()" class="w-full py-3.5 px-6 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-base shadow-lg shadow-emerald-500/20 transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    <span>ส่งคำตอบ</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- 4. LEADERBOARD VIEW -->
+        <section id="viewLeaderboard" class="hidden w-full max-w-2xl mx-auto space-y-6">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                    <h2 class="text-2xl font-bold text-white flex items-center space-x-2">
+                        <i class="fa-solid fa-crown text-amber-400"></i>
+                        <span>ตารางอันดับคะแนน (Leaderboard)</span>
+                    </h2>
+                    <p class="text-xs text-slate-400">อัปเดตคะแนนรวมเรียลไทม์ของพนักงานทุกคน</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="app.fetchInitData()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition flex items-center space-x-1">
+                        <i class="fa-solid fa-rotate"></i>
+                        <span>รีเฟรชข้อมูล</span>
+                    </button>
+                    <button onclick="app.navigateHome()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700">
+                        <i class="fa-solid fa-house mr-1"></i> หน้าหลัก
+                    </button>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl">
+                <div class="p-4 bg-slate-800/80 border-b border-slate-700 flex justify-between items-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    <span>อันดับ & พนักงาน</span>
+                    <span>ฝ่ายงาน / คะแนนรวม</span>
+                </div>
+                <div id="leaderboardList" class="divide-y divide-slate-800 max-h-[480px] overflow-y-auto no-scrollbar">
+                    <!-- Leaderboard items -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. ADMIN CONTROL DASHBOARD -->
+        <section id="viewAdminDashboard" class="hidden w-full max-w-5xl mx-auto space-y-6">
+            <!-- Header Bar -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-800/90 p-4 rounded-2xl border border-slate-700">
+                <div>
+                    <h2 class="text-xl font-bold text-white flex items-center space-x-2">
+                        <i class="fa-solid fa-sliders text-emerald-400"></i>
+                        <span>แผงควบคุมระบบ (Admin Control Center)</span>
+                    </h2>
+                    <p class="text-xs text-slate-400">จัดการเปิด-ปิดคำถามทีละข้อ เพิ่มคำถามใหม่ และดูรายงานคะแนน</p>
+                </div>
+                
+                <div class="flex items-center space-x-2 flex-wrap">
+                    <button onclick="app.exportToCSV()" class="px-3.5 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold border border-slate-600 transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-file-excel text-emerald-400"></i>
+                        <span>Export CSV</span>
+                    </button>
+                    <button onclick="app.logoutAdmin()" class="px-3.5 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs font-semibold border border-rose-500/40 transition">
+                        <i class="fa-solid fa-right-from-bracket mr-1"></i> ออกจาก Admin
+                    </button>
+                </div>
+            </div>
+
+            <!-- Global Controls for Questions -->
+            <div class="glass-card p-4 rounded-xl border border-slate-700 flex flex-col sm:flex-row justify-between items-center gap-3">
+                <span class="text-xs text-slate-300 font-semibold">
+                    <i class="fa-solid fa-bullhorn text-amber-400 mr-1.5"></i>
+                    ควบคุมการเปิด-ปิดข้อสอบทั้งหมดให้พนักงานตอบ:
+                </span>
+                <div class="flex space-x-2">
+                    <button onclick="app.toggleAllQuestions(true)" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition">
+                        <i class="fa-solid fa-lock-open mr-1"></i> เปิดทุกข้อ
+                    </button>
+                    <button onclick="app.toggleAllQuestions(false)" class="px-3.5 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-bold transition">
+                        <i class="fa-solid fa-lock mr-1"></i> ปิดทุกข้อ
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabs Navigation -->
+            <div class="flex border-b border-slate-700 space-x-4">
+                <button onclick="app.switchAdminTab('questions')" id="tabBtnQuestions" class="py-2 px-4 font-semibold text-sm border-b-2 border-emerald-400 text-emerald-400">
+                    <i class="fa-solid fa-list-check mr-2"></i>จัดการคำถาม (<span id="adminQCount">0</span>)
+                </button>
+                <button onclick="app.switchAdminTab('users')" id="tabBtnUsers" class="py-2 px-4 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-users mr-2"></i>พนักงานที่ลงทะเบียน (<span id="adminUserCount">0</span>)
+                </button>
+            </div>
+
+            <!-- Tab 1: Questions Management with Open/Close Toggle -->
+            <div id="adminTabQuestions" class="space-y-4">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-base font-bold text-white">คลังคำถาม Kaizen Quiz</h3>
+                    <button onclick="app.openQuestionModal()" class="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs transition flex items-center space-x-1.5 shadow-lg shadow-emerald-500/20">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>เพิ่มคำถามใหม่</span>
+                    </button>
+                </div>
+
+                <div class="glass-card rounded-2xl overflow-hidden border border-slate-700">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-300">
+                            <thead class="bg-slate-800 text-slate-400 font-semibold uppercase border-b border-slate-700">
+                                <tr>
+                                    <th class="p-3">#</th>
+                                    <th class="p-3">สถานะเปิดตอบ</th>
+                                    <th class="p-3">หมวดหมู่</th>
+                                    <th class="p-3">โจทย์คำถาม</th>
+                                    <th class="p-3">เฉลยข้อที่ถูกต้อง</th>
+                                    <th class="p-3 text-right">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminQuestionTableBody" class="divide-y divide-slate-800">
+                                <!-- Dynamic Question Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Users Data Table -->
+            <div id="adminTabUsers" class="hidden space-y-4">
+                <div class="glass-card rounded-2xl overflow-hidden border border-slate-700">
+                    <div class="overflow-x-auto max-h-[500px]">
+                        <table class="w-full text-left text-xs text-slate-300">
+                            <thead class="bg-slate-800 text-slate-400 font-semibold uppercase border-b border-slate-700 sticky top-0">
+                                <tr>
+                                    <th class="p-3">รหัสพนักงาน</th>
+                                    <th class="p-3">ชื่อ - นามสกุล</th>
+                                    <th class="p-3">ฝ่ายงาน / แผนก</th>
+                                    <th class="p-3">ตอบแล้ว (ข้อ)</th>
+                                    <th class="p-3 text-right">คะแนนรวม</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminUserTableBody" class="divide-y divide-slate-800">
+                                <!-- Dynamic User Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-industrial-950 border-t border-slate-800 py-3 text-center text-xs text-slate-500">
+        <p>Kaizen Quiz Challenge &copy; 2026 - ระบบพนักงานและแอดมินจัดการคำถาม</p>
+    </footer>
+
+    <!-- MODAL 1: Admin PIN Authentication -->
+    <div id="modalAdminAuth" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-card p-6 rounded-2xl max-w-xs w-full space-y-4 border border-slate-700 shadow-2xl">
+            <div class="text-center space-y-1">
+                <div class="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto text-lg">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <h4 class="font-bold text-white text-lg">ยืนยันสิทธิ์ Admin</h4>
+                <p class="text-xs text-slate-400">ใส่รหัส PIN เพื่อเข้าแผงควบคุม (ค่าเริ่มต้น: 1234)</p>
+            </div>
+            <input type="password" id="inputAdminPin" maxlength="6" placeholder="PIN Code" class="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-center font-mono text-xl tracking-widest text-white focus:outline-none focus:border-emerald-500">
+            <div class="flex space-x-2">
+                <button onclick="app.closeAdminAuthModal()" class="w-1/2 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">ยกเลิก</button>
+                <button onclick="app.verifyAdminPin()" class="w-1/2 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs">ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: Add/Edit Question Modal -->
+    <div id="modalQuestion" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="glass-card p-6 rounded-2xl max-w-lg w-full space-y-4 border border-slate-700 my-8">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h4 class="font-bold text-white text-base" id="modalQuestionTitle">เพิ่มคำถามใหม่</h4>
+                <button onclick="app.closeQuestionModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="formQuestion" onsubmit="app.saveQuestion(event)" class="space-y-3">
+                <input type="hidden" id="qEditIndex" value="-1">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">หมวดหมู่คำถาม</label>
+                    <input type="text" id="qCategory" required placeholder="เช่น 5S, Muda, Safety, JIT" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">โจทย์คำถาม</label>
+                    <textarea id="qText" required rows="3" placeholder="ระบุรายละเอียดโจทย์คำถาม..." class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"></textarea>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-300 mb-0.5">ตัวเลือก A</label>
+                        <input type="text" id="qOptA" required class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-300 mb-0.5">ตัวเลือก B</label>
+                        <input type="text" id="qOptB" required class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-300 mb-0.5">ตัวเลือก C</label>
+                        <input type="text" id="qOptC" required class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-300 mb-0.5">ตัวเลือก D</label>
+                        <input type="text" id="qOptD" required class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">เฉลยข้อที่ถูกต้อง</label>
+                    <select id="qCorrect" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500">
+                        <option value="0">ตัวเลือก A</option>
+                        <option value="1">ตัวเลือก B</option>
+                        <option value="2">ตัวเลือก C</option>
+                        <option value="3">ตัวเลือก D</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="app.closeQuestionModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">ยกเลิก</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs">บันทึกคำถาม</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: Google Apps Script Setup & Connection Modal -->
+    <div id="modalGasSetup" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+        <div class="glass-card p-6 rounded-2xl max-w-2xl w-full space-y-4 border border-slate-700 my-8">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h4 class="font-bold text-white text-base flex items-center space-x-2">
+                    <i class="fa-brands fa-google text-emerald-400"></i>
+                    <span>ตั้งค่า Google Apps Script Web App URL</span>
+                </h4>
+                <button onclick="app.closeGasModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="space-y-3 text-xs text-slate-300">
+                <div class="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center justify-between">
+                    <div>
+                        <p class="font-bold text-emerald-400">สถานะ: ลิงก์ฝังในระบบเรียบร้อยแล้ว</p>
+                        <p class="text-[11px] text-slate-300">รองรับระบบ Users, Answers และ Questions แบบแยกชีตอัตโนมัติ</p>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="block font-semibold text-slate-200">Google Apps Script Web App URL</label>
+                    <input type="url" id="inputGasUrl" class="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div class="pt-2">
+                    <p class="font-semibold text-slate-200 mb-1">โค้ด Google Apps Script สำเร็จรูปสำหรับแปะใน Google Sheets ( Extensions > Apps Script ):</p>
+                    <textarea readonly id="gasCodeTemplate" rows="6" class="w-full p-3 rounded-xl bg-slate-950 font-mono text-[11px] text-emerald-300 border border-slate-800 leading-relaxed no-scrollbar focus:outline-none"></textarea>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center pt-2 border-t border-slate-700">
+                <button onclick="app.resetDefaultUrl()" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700">
+                    คืนค่า URL เริ่มต้น
+                </button>
+                <button onclick="app.saveGasUrl()" class="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20">
+                    บันทึก URL
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- JAVASCRIPT APPLICATION CODE -->
+    <script>
+        // HARDCODED DEFAULT GOOGLE APPS SCRIPT WEB APP URL
+        const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbxZyjlO2tEqMhWJijSjsYAJjHzhgkxx4xQuJaxA8yP5Pcu-Bdeg0o2xBN1P642FZUpj/exec";
+
+        // Default Sample Questions (with isOpen status)
+        const DEFAULT_QUESTIONS = [
+            {
+                id: "q1",
+                category: "5S (ส.1 - ส.5)",
+                question: "ขั้นตอน 'สะสาง (Seiri)' ในระบบ 5S หมายถึงการปฏิบัติข้อใดถูกต้องที่สุด?",
+                options: [
+                    "จัดวางสิ่งของให้เป็นระเบียบเรียบร้อย",
+                    "แยกของที่จำเป็น และของที่ไม่จำเป็นออก แล้วกำจัดของที่ไม่จำเป็นทิ้งไป",
+                    "ทำความสะอาดเครื่องจักรและพื้นที่ทำงานเป็นประจำ",
+                    "สร้างมาตรฐานในการปฏิบัติงาน"
+                ],
+                correct: 1,
+                isOpen: true
+            },
+            {
+                id: "q2",
+                category: "7 Wastes (Muda)",
+                question: "ข้อใดถือเป็นความสูญเสียประเภท 'Muda' ด้านการรอคอย (Waiting) ในโรงงาน?",
+                options: [
+                    "พนักงานต้องนั่งคอยวัตถุดิบจากไลน์ก่อนหน้าเนื่องจากเครื่องจักรเสีย",
+                    "การผลิตชิ้นงานมากเกินความต้องการของลูกค้า",
+                    "การเคลื่อนย้ายพาเลทสินค้าซ้ำซ้อนหลายรอบ",
+                    "การแก้ไขชิ้นงาน NG (Defects)"
+                ],
+                correct: 0,
+                isOpen: false
+            },
+            {
+                id: "q3",
+                category: "Poka-Yoke (Mistake Proofing)",
+                question: "วัตถุประสงค์หลักของการนำระบบ Poka-Yoke มาใช้ในสายการผลิตคืออะไร?",
+                options: [
+                    "เพิ่มความเร็วในการผลิตเป็น 2 เท่า",
+                    "ป้องกันไม่ให้เกิดความผิดพลาดจากมนุษย์ (Human Error) ก่อนส่งผลเสีย",
+                    "ลดจำนวนพนักงานในสายการผลิต",
+                    "เพิ่มงบประมาณในการซ่อมบำรุงเครื่องจักร"
+                ],
+                correct: 1,
+                isOpen: false
+            },
+            {
+                id: "q4",
+                category: "Kaizen Philosophy",
+                question: "หัวใจสำคัญสูงสุดของแนวคิด Kaizen (การปรับปรุงอย่างต่อเนื่อง) คืออะไร?",
+                options: [
+                    "การลงทุนซื้อเครื่องจักรราคาแพงและทันสมัยที่สุด",
+                    "การปรับปรุงทีละเล็กทีละน้อยอย่างต่อเนื่อง โดยพนักงานทุกคนมีส่วนร่วม",
+                    "การเปลี่ยนโครงสร้างผู้บริหารใหม่ทั้งหมด",
+                    "การเน้นเพิ่มชั่วโมงการทำงาน OT"
+                ],
+                correct: 1,
+                isOpen: false
+            },
+            {
+                id: "q5",
+                category: "Just-In-Time (JIT)",
+                question: "แนวคิดการผลิตแบบทันเวลาพอดี (Just-In-Time) มุ่งเน้นการขจัดสิ่งใดเป็นสำคัญ?",
+                options: [
+                    "สินค้าคงคลัง (Inventory) ที่เกินความจำเป็น",
+                    "ชั่วโมงการทำงานของพนักงาน",
+                    "การตรวจสอบคุณภาพสินค้า",
+                    "ความปลอดภัยในโรงงาน"
+                ],
+                correct: 0,
+                isOpen: false
+            }
+        ];
+
+        // Advanced Multi-Sheet Google Apps Script Code template
+        const GAS_CODE_STRING = `function doGet(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var usersSheet = getOrCreateSheet(ss, "Users", ["EmpID", "FullName", "Department", "RegisteredAt"]);
+  var answersSheet = getOrCreateSheet(ss, "Answers", ["EmpID", "QuestionID", "SelectedOption", "IsCorrect", "Points", "AnsweredAt"]);
+  var questionsSheet = getOrCreateSheet(ss, "Questions", ["ID", "Category", "Question", "OptionA", "OptionB", "OptionC", "OptionD", "Correct", "IsOpen"]);
+  
+  var users = sheetToObjects(usersSheet);
+  var answers = sheetToObjects(answersSheet);
+  var questions = sheetToObjects(questionsSheet);
+  
+  return ContentService.createTextOutput(JSON.stringify({
+    status: "success",
+    users: users,
+    answers: answers,
+    questions: questions
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  try {
+    var params = JSON.parse(e.postData.contents);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var action = params.action;
+    
+    if (action === "register") {
+      var usersSheet = getOrCreateSheet(ss, "Users", ["EmpID", "FullName", "Department", "RegisteredAt"]);
+      var data = usersSheet.getDataRange().getValues();
+      var foundIndex = -1;
+      for (var i = 1; i < data.length; i++) {
+        if (data[i][0] === params.empId) { foundIndex = i + 1; break; }
+      }
+      if (foundIndex > 0) {
+        usersSheet.getRange(foundIndex, 2).setValue(params.fullName);
+        usersSheet.getRange(foundIndex, 3).setValue(params.dept);
+      } else {
+        usersSheet.appendRow([params.empId, params.fullName, params.dept, new Date().toISOString()]);
+      }
+    } else if (action === "submitAnswer") {
+      var answersSheet = getOrCreateSheet(ss, "Answers", ["EmpID", "QuestionID", "SelectedOption", "IsCorrect", "Points", "AnsweredAt"]);
+      answersSheet.appendRow([params.empId, params.questionId, params.selectedOption, params.isCorrect, params.points, new Date().toISOString()]);
+    } else if (action === "syncQuestions") {
+      var questionsSheet = getOrCreateSheet(ss, "Questions", ["ID", "Category", "Question", "OptionA", "OptionB", "OptionC", "OptionD", "Correct", "IsOpen"]);
+      questionsSheet.clearContents();
+      questionsSheet.appendRow(["ID", "Category", "Question", "OptionA", "OptionB", "OptionC", "OptionD", "Correct", "IsOpen"]);
+      params.questions.forEach(function(q) {
+        questionsSheet.appendRow([q.id, q.category, q.question, q.options[0], q.options[1], q.options[2], q.options[3], q.correct, q.isOpen]);
+      });
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function getOrCreateSheet(ss, name, headers) {
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    sheet.appendRow(headers);
+  }
+  return sheet;
+}
+
+function sheetToObjects(sheet) {
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return [];
+  var headers = data[0];
+  var results = [];
+  for (var i = 1; i < data.length; i++) {
+    var obj = {};
+    for (var j = 0; j < headers.length; j++) {
+      obj[headers[j]] = data[i][j];
+    }
+    results.push(obj);
+  }
+  return results;
+}`;
+
+        // APP CORE CLASS
+        class KaizenApp {
+            constructor() {
+                this.gasUrl = localStorage.getItem('kaizen_gas_url') || DEFAULT_GAS_URL;
+                this.questions = JSON.parse(localStorage.getItem('kaizen_questions')) || DEFAULT_QUESTIONS;
+                this.users = JSON.parse(localStorage.getItem('kaizen_users')) || [];
+                this.userAnswers = JSON.parse(localStorage.getItem('kaizen_user_answers')) || []; // { empId, questionId, selectedOption, isCorrect, points }
+                
+                this.currentUser = JSON.parse(localStorage.getItem('kaizen_current_user')) || null;
+                this.activeQuestion = null;
+                this.selectedChoiceIndex = null;
+                this.isAdmin = false;
+
+                this.init();
+            }
+
+            init() {
+                document.getElementById('gasCodeTemplate').value = GAS_CODE_STRING;
+                document.getElementById('inputGasUrl').value = this.gasUrl;
+                
+                if (this.currentUser) {
+                    this.updateNavUserBadge();
+                    this.showPlayerDashboard();
+                } else {
+                    this.showAuthView();
+                }
+
+                // Initial Background Fetch
+                if (this.gasUrl) {
+                    this.fetchInitData();
+                }
+            }
+
+            // Employee ID Validation (S + 4 digits regex: /^S\d{4}$/)
+            validateEmpId(empId) {
+                const regex = /^S\d{4}$/;
+                return regex.test(empId);
+            }
+
+            // Tab Switching for Auth
+            switchAuthTab(tab) {
+                const btnLogin = document.getElementById('tabBtnLogin');
+                const btnReg = document.getElementById('tabBtnRegister');
+                const formLogin = document.getElementById('formLogin');
+                const formReg = document.getElementById('formRegister');
+
+                if (tab === 'login') {
+                    btnLogin.className = 'py-2.5 rounded-lg bg-emerald-500 text-slate-950 font-bold transition';
+                    btnReg.className = 'py-2.5 rounded-lg text-slate-400 hover:text-white transition';
+                    formLogin.classList.remove('hidden');
+                    formReg.classList.add('hidden');
+                } else {
+                    btnReg.className = 'py-2.5 rounded-lg bg-emerald-500 text-slate-950 font-bold transition';
+                    btnLogin.className = 'py-2.5 rounded-lg text-slate-400 hover:text-white transition';
+                    formReg.classList.remove('hidden');
+                    formLogin.classList.add('hidden');
+                }
+            }
+
+            // Handle Pre-Registration
+            handleRegister(e) {
+                e.preventDefault();
+                const empId = document.getElementById('regEmpId').value.trim().toUpperCase();
+                const fullName = document.getElementById('regFullName').value.trim();
+                const dept = document.getElementById('regDept').value.trim();
+
+                if (!this.validateEmpId(empId)) {
+                    alert('รูปแบบรหัสพนักงานไม่ถูกต้อง! ต้องขึ้นต้นด้วยตัว S และตามด้วยตัวเลข 4 หลักเท่านั้น (เช่น S1234, S0001)');
+                    return;
+                }
+
+                if (!fullName || !dept) {
+                    alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+                    return;
+                }
+
+                const userObj = { empId, fullName, dept, registeredAt: new Date().toISOString() };
+                
+                // Save locally
+                const existingIndex = this.users.findIndex(u => u.empId === empId);
+                if (existingIndex >= 0) {
+                    this.users[existingIndex] = userObj;
+                } else {
+                    this.users.push(userObj);
+                }
+                localStorage.setItem('kaizen_users', JSON.stringify(this.users));
+
+                // Set Current User
+                this.currentUser = userObj;
+                localStorage.setItem('kaizen_current_user', JSON.stringify(this.currentUser));
+
+                // Sync to Google Sheets immediately
+                this.sendToGas({ action: 'register', ...userObj });
+
+                this.updateNavUserBadge();
+                alert(`ลงทะเบียนล่วงหน้าสำเร็จ! ข้อมูลถูกบันทึกลง Google Sheets เรียบร้อยแล้ว ยินดีต้อนรับคุณ ${fullName} (${empId})`);
+                this.showPlayerDashboard();
+            }
+
+            // Handle Login with Strict Verification
+            handleLogin(e) {
+                e.preventDefault();
+                const empId = document.getElementById('loginEmpId').value.trim().toUpperCase();
+
+                if (!this.validateEmpId(empId)) {
+                    alert('รูปแบบรหัสพนักงานไม่ถูกต้อง! ต้องขึ้นต้นด้วยตัว S และตามด้วยตัวเลข 4 หลักเท่านั้น (เช่น S1234)');
+                    return;
+                }
+
+                // Strict Check: User MUST be in registered list
+                let user = this.users.find(u => u.empId === empId);
+
+                if (!user) {
+                    alert(`ไม่พบรหัสพนักงาน "${empId}" ในระบบลงทะเบียน!\n\nพนักงานต้องลงทะเบียนล่วงหน้าก่อนเข้าตอบคำถาม กรุณาคลิกที่แท็บ "ลงทะเบียนล่วงหน้า" เพื่อกรอกข้อมูลก่อนครับ`);
+                    this.switchAuthTab('register');
+                    document.getElementById('regEmpId').value = empId;
+                    return;
+                }
+
+                this.currentUser = user;
+                localStorage.setItem('kaizen_current_user', JSON.stringify(this.currentUser));
+                
+                this.updateNavUserBadge();
+                this.showPlayerDashboard();
+                
+                // Fetch latest data from Google Sheets to sync history
+                if (this.gasUrl) this.fetchInitData();
+            }
+
+            logoutUser() {
+                this.currentUser = null;
+                localStorage.removeItem('kaizen_current_user');
+                document.getElementById('navUserBadge').classList.add('hidden');
+                document.getElementById('navUserBadge').classList.remove('flex');
+                this.showAuthView();
+            }
+
+            updateNavUserBadge() {
+                const badge = document.getElementById('navUserBadge');
+                const nameEl = document.getElementById('navUserName');
+                if (this.currentUser) {
+                    nameEl.innerText = `${this.currentUser.empId} - ${this.currentUser.fullName}`;
+                    badge.classList.remove('hidden');
+                    badge.classList.add('flex');
+                } else {
+                    badge.classList.add('hidden');
+                    badge.classList.remove('flex');
+                }
+            }
+
+            // View Management
+            hideAllViews() {
+                const views = ['viewAuth', 'viewPlayerDashboard', 'viewQuestionDetail', 'viewLeaderboard', 'viewAdminDashboard'];
+                views.forEach(id => document.getElementById(id).classList.add('hidden'));
+            }
+
+            navigateHome() {
+                if (this.currentUser) {
+                    this.showPlayerDashboard();
+                } else {
+                    this.showAuthView();
+                }
+            }
+
+            showAuthView() {
+                this.hideAllViews();
+                document.getElementById('viewAuth').classList.remove('hidden');
+            }
+
+            showPlayerDashboard() {
+                if (!this.currentUser) return this.showAuthView();
+                this.hideAllViews();
+                document.getElementById('viewPlayerDashboard').classList.remove('hidden');
+
+                // Render Header Profile
+                document.getElementById('dashEmpId').innerText = this.currentUser.empId;
+                document.getElementById('dashFullName').innerText = this.currentUser.fullName;
+                document.getElementById('dashDept').innerText = `ฝ่ายงาน: ${this.currentUser.dept}`;
+
+                // Calculate Total Score for current user
+                const userScores = this.userAnswers.filter(a => a.empId === this.currentUser.empId);
+                const totalScore = userScores.reduce((sum, item) => sum + (parseInt(item.points) || 0), 0);
+                document.getElementById('dashTotalScore').innerText = totalScore;
+
+                this.renderPlayerQuestions();
+            }
+
+            renderPlayerQuestions() {
+                const container = document.getElementById('playerQuestionList');
+                container.innerHTML = '';
+
+                this.questions.forEach((q, idx) => {
+                    // Check if user answered this question
+                    const pastAnswer = this.userAnswers.find(a => a.empId === this.currentUser.empId && a.questionId === q.id);
+                    const isAnswered = !!pastAnswer;
+
+                    const card = document.createElement('div');
+                    card.className = 'glass-card p-5 rounded-2xl border transition duration-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4';
+
+                    let statusBadge = '';
+                    let actionButton = '';
+
+                    if (isAnswered) {
+                        card.classList.add('border-slate-700/60', 'opacity-90');
+                        statusBadge = `<span class="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center space-x-1">
+                                        <i class="fa-solid fa-circle-check"></i> <span>ตอบแล้ว (+${pastAnswer.points || 0} คะแนน)</span>
+                                       </span>`;
+                        actionButton = `<button onclick="app.openQuestionDetail('${q.id}')" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700">
+                                            ดูประวัติการตอบ
+                                        </button>`;
+                    } else if (q.isOpen) {
+                        card.classList.add('border-emerald-500/50', 'bg-emerald-500/5');
+                        statusBadge = `<span class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/40 animate-pulse flex items-center space-x-1">
+                                        <i class="fa-solid fa-lock-open"></i> <span>เปิดให้ตอบแล้ว</span>
+                                       </span>`;
+                        actionButton = `<button onclick="app.openQuestionDetail('${q.id}')" class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition flex items-center space-x-1">
+                                            <span>เข้าตอบคำถาม</span> <i class="fa-solid fa-chevron-right text-xs"></i>
+                                        </button>`;
+                    } else {
+                        card.classList.add('border-slate-800', 'bg-slate-900/40');
+                        statusBadge = `<span class="px-3 py-1 rounded-full bg-slate-800 text-slate-400 text-xs font-semibold border border-slate-700 flex items-center space-x-1">
+                                        <i class="fa-solid fa-lock"></i> <span>รอ Admin เปิดข้อนี้</span>
+                                       </span>`;
+                        actionButton = `<button disabled class="px-4 py-2 rounded-xl bg-slate-800/60 text-slate-500 text-xs font-medium cursor-not-allowed border border-slate-800">
+                                            ยังไม่เปิด
+                                        </button>`;
+                    }
+
+                    card.innerHTML = `
+                        <div class="space-y-2 flex-1">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs font-mono font-bold text-slate-400">ข้อที่ ${idx + 1}</span>
+                                <span class="px-2.5 py-0.5 rounded bg-slate-800 text-slate-300 text-[11px] border border-slate-700">${q.category}</span>
+                                ${statusBadge}
+                            </div>
+                            <h4 class="font-bold text-base text-white leading-snug">${q.question}</h4>
+                        </div>
+                        <div class="w-full sm:w-auto text-right">
+                            ${actionButton}
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            }
+
+            openQuestionDetail(qId) {
+                const q = this.questions.find(item => item.id === qId);
+                if (!q) return;
+                this.activeQuestion = q;
+                this.selectedChoiceIndex = null;
+
+                const qIdx = this.questions.findIndex(item => item.id === qId);
+                document.getElementById('qDetailIndex').innerText = `ข้อที่ ${qIdx + 1}`;
+                document.getElementById('qDetailCategory').innerText = `หมวดหมู่: ${q.category}`;
+                document.getElementById('qDetailText').innerText = q.question;
+
+                const pastAnswer = this.userAnswers.find(a => a.empId === this.currentUser.empId && a.questionId === q.id);
+                const isAnswered = !!pastAnswer;
+
+                const choicesContainer = document.getElementById('qDetailChoices');
+                choicesContainer.innerHTML = '';
+
+                const btnSubmit = document.getElementById('btnSubmitAnswer');
+                const feedbackBanner = document.getElementById('qDetailFeedback');
+                const optionLabels = ['A', 'B', 'C', 'D'];
+
+                q.options.forEach((opt, idx) => {
+                    const btn = document.createElement('button');
+                    btn.className = `w-full p-4 rounded-xl glass-card text-left flex items-center space-x-3 transition border choice-btn-${idx}`;
+                    
+                    if (isAnswered) {
+                        btn.disabled = true;
+                        if (idx === q.correct) {
+                            btn.classList.add('border-emerald-500', 'bg-emerald-500/20', 'text-white');
+                        } else if (idx === pastAnswer.selectedOption && !pastAnswer.isCorrect) {
+                            btn.classList.add('border-rose-500', 'bg-rose-500/20', 'text-white');
+                        } else {
+                            btn.classList.add('border-slate-800', 'opacity-50');
+                        }
+                    } else {
+                        btn.classList.add('border-slate-700', 'hover:border-emerald-400');
+                        btn.onclick = () => this.selectChoice(idx);
+                    }
+
+                    btn.innerHTML = `
+                        <div class="w-8 h-8 rounded-lg bg-slate-800 border border-slate-600 flex items-center justify-center font-bold text-xs text-emerald-400">
+                            ${optionLabels[idx]}
+                        </div>
+                        <div class="text-sm font-medium text-slate-100 flex-1">${opt}</div>
+                    `;
+                    choicesContainer.appendChild(btn);
+                });
+
+                if (isAnswered) {
+                    btnSubmit.classList.add('hidden');
+                    feedbackBanner.classList.remove('hidden');
+                    if (pastAnswer.isCorrect) {
+                        feedbackBanner.className = 'p-4 rounded-xl text-center space-y-1 bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 block';
+                        document.getElementById('qDetailFeedbackTitle').innerText = `ตอบถูก! (+100 คะแนน)`;
+                        document.getElementById('qDetailFeedbackSub').innerText = `คุณได้ตอบข้อนี้ไปแล้วเรียบร้อย`;
+                    } else {
+                        feedbackBanner.className = 'p-4 rounded-xl text-center space-y-1 bg-rose-500/10 border border-rose-500/40 text-rose-400 block';
+                        document.getElementById('qDetailFeedbackTitle').innerText = `ตอบไม่ถูกต้อง (0 คะแนน)`;
+                        document.getElementById('qDetailFeedbackSub').innerText = `เฉลยที่ถูกต้องคือ: ${q.options[q.correct]}`;
+                    }
+                } else {
+                    btnSubmit.classList.remove('hidden');
+                    feedbackBanner.classList.add('hidden');
+                }
+
+                this.hideAllViews();
+                document.getElementById('viewQuestionDetail').classList.remove('hidden');
+            }
+
+            selectChoice(idx) {
+                this.selectedChoiceIndex = idx;
+                const buttons = document.querySelectorAll('#qDetailChoices button');
+                buttons.forEach((btn, i) => {
+                    if (i === idx) {
+                        btn.classList.remove('border-slate-700');
+                        btn.classList.add('border-emerald-400', 'bg-emerald-500/10');
+                    } else {
+                        btn.classList.remove('border-emerald-400', 'bg-emerald-500/10');
+                        btn.classList.add('border-slate-700');
+                    }
+                });
+            }
+
+            submitSelectedAnswer() {
+                if (this.selectedChoiceIndex === null) {
+                    alert('กรุณาเลือกตัวเลือกก่อนกดส่งคำตอบ');
+                    return;
+                }
+
+                const q = this.activeQuestion;
+                const isCorrect = this.selectedChoiceIndex === q.correct;
+                const points = isCorrect ? 100 : 0;
+
+                const answerObj = {
+                    empId: this.currentUser.empId,
+                    questionId: q.id,
+                    selectedOption: this.selectedChoiceIndex,
+                    isCorrect: isCorrect,
+                    points: points,
+                    answeredAt: new Date().toISOString()
+                };
+
+                this.userAnswers.push(answerObj);
+                localStorage.setItem('kaizen_user_answers', JSON.stringify(this.userAnswers));
+
+                // Sync Answer to GAS
+                this.sendToGas({ action: 'submitAnswer', ...answerObj });
+
+                if (isCorrect) {
+                    confetti({ particleCount: 60, spread: 70, origin: { y: 0.7 } });
+                }
+
+                alert(isCorrect ? 'ตอบถูกต้อง! ได้รับ 100 คะแนน' : 'บันทึกคำตอบแล้ว!');
+                this.showPlayerDashboard();
+            }
+
+            showLeaderboardView() {
+                this.hideAllViews();
+                document.getElementById('viewLeaderboard').classList.remove('hidden');
+                this.renderLeaderboard();
+                if (this.gasUrl) this.fetchInitData();
+            }
+
+            renderLeaderboard() {
+                const container = document.getElementById('leaderboardList');
+                container.innerHTML = '';
+
+                // Calculate total scores per user
+                const leaderboardMap = {};
+                this.users.forEach(u => {
+                    leaderboardMap[u.empId] = { empId: u.empId, fullName: u.fullName, dept: u.dept, totalScore: 0 };
+                });
+
+                this.userAnswers.forEach(a => {
+                    if (leaderboardMap[a.empId]) {
+                        leaderboardMap[a.empId].totalScore += (parseInt(a.points) || 0);
+                    }
+                });
+
+                const sorted = Object.values(leaderboardMap).sort((a, b) => b.totalScore - a.totalScore);
+
+                if (sorted.length === 0) {
+                    container.innerHTML = `<div class="p-8 text-center text-xs text-slate-500">ยังไม่มีข้อมูลคะแนนพนักงาน</div>`;
+                    return;
+                }
+
+                sorted.forEach((item, idx) => {
+                    let rankBadge = `<span class="w-6 text-center font-bold text-xs text-slate-400">${idx + 1}</span>`;
+                    if (idx === 0) rankBadge = `<span class="w-6 h-6 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center font-black text-xs shadow-md">1</span>`;
+                    if (idx === 1) rankBadge = `<span class="w-6 h-6 rounded-full bg-slate-300 text-slate-950 flex items-center justify-center font-black text-xs shadow-md">2</span>`;
+                    if (idx === 2) rankBadge = `<span class="w-6 h-6 rounded-full bg-amber-700 text-white flex items-center justify-center font-black text-xs shadow-md">3</span>`;
+
+                    const row = document.createElement('div');
+                    row.className = 'p-4 flex items-center justify-between hover:bg-slate-800/50 transition';
+                    row.innerHTML = `
+                        <div class="flex items-center space-x-3">
+                            ${rankBadge}
+                            <div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="font-mono text-xs font-bold text-emerald-400">${item.empId}</span>
+                                    <h4 class="font-bold text-sm text-white">${item.fullName}</h4>
+                                </div>
+                                <span class="text-[11px] text-slate-400">${item.dept}</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-extrabold text-emerald-400 text-base">${item.totalScore}</span>
+                            <span class="text-[10px] text-slate-500 block">คะแนน</span>
+                        </div>
+                    `;
+                    container.appendChild(row);
+                });
+            }
+
+            // ADMIN CONTROLS
+            promptAdminAuth() {
+                if (this.isAdmin) {
+                    this.showAdminDashboard();
+                } else {
+                    document.getElementById('modalAdminAuth').classList.remove('hidden');
+                    document.getElementById('inputAdminPin').focus();
+                }
+            }
+
+            closeAdminAuthModal() {
+                document.getElementById('modalAdminAuth').classList.add('hidden');
+            }
+
+            verifyAdminPin() {
+                const pin = document.getElementById('inputAdminPin').value;
+                if (pin === '1234') {
+                    this.isAdmin = true;
+                    this.closeAdminAuthModal();
+                    document.getElementById('roleToggleText').innerText = 'แผงควบคุม Admin';
+                    this.showAdminDashboard();
+                } else {
+                    alert('รหัส PIN ไม่ถูกต้อง (ค่าเริ่มต้นคือ 1234)');
+                }
+            }
+
+            logoutAdmin() {
+                this.isAdmin = false;
+                document.getElementById('roleToggleText').innerText = 'สำหรับ Admin';
+                this.navigateHome();
+            }
+
+            showAdminDashboard() {
+                this.hideAllViews();
+                document.getElementById('viewAdminDashboard').classList.remove('hidden');
+                this.renderAdminQuestionTable();
+                this.renderAdminUserTable();
+            }
+
+            switchAdminTab(tab) {
+                if (tab === 'questions') {
+                    document.getElementById('adminTabQuestions').classList.remove('hidden');
+                    document.getElementById('adminTabUsers').classList.add('hidden');
+                    document.getElementById('tabBtnQuestions').className = 'py-2 px-4 font-semibold text-sm border-b-2 border-emerald-400 text-emerald-400';
+                    document.getElementById('tabBtnUsers').className = 'py-2 px-4 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200';
+                } else {
+                    document.getElementById('adminTabQuestions').classList.add('hidden');
+                    document.getElementById('adminTabUsers').classList.remove('hidden');
+                    document.getElementById('tabBtnUsers').className = 'py-2 px-4 font-semibold text-sm border-b-2 border-emerald-400 text-emerald-400';
+                    document.getElementById('tabBtnQuestions').className = 'py-2 px-4 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200';
+                }
+            }
+
+            // Toggle Open/Close Individual Question
+            toggleQuestionOpen(idx) {
+                this.questions[idx].isOpen = !this.questions[idx].isOpen;
+                localStorage.setItem('kaizen_questions', JSON.stringify(this.questions));
+                this.renderAdminQuestionTable();
+                this.syncQuestionsToGas();
+            }
+
+            toggleAllQuestions(status) {
+                this.questions.forEach(q => q.isOpen = status);
+                localStorage.setItem('kaizen_questions', JSON.stringify(this.questions));
+                this.renderAdminQuestionTable();
+                this.syncQuestionsToGas();
+                alert(status ? 'เปิดรับคำตอบคำถามทุกข้อแล้ว!' : 'ปิดรับคำตอบทุกข้อเรียบร้อยแล้ว!');
+            }
+
+            renderAdminQuestionTable() {
+                const tbody = document.getElementById('adminQuestionTableBody');
+                tbody.innerHTML = '';
+                document.getElementById('adminQCount').innerText = this.questions.length;
+                const labels = ['A', 'B', 'C', 'D'];
+
+                this.questions.forEach((q, idx) => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-800/40 transition';
+                    tr.innerHTML = `
+                        <td class="p-3 font-mono text-slate-500">${idx + 1}</td>
+                        <td class="p-3">
+                            <button onclick="app.toggleQuestionOpen(${idx})" class="px-3 py-1 rounded-full text-xs font-bold transition flex items-center space-x-1 ${q.isOpen ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-slate-800 text-slate-400 border border-slate-700'}">
+                                <i class="fa-solid ${q.isOpen ? 'fa-lock-open text-emerald-400' : 'fa-lock text-slate-500'}"></i>
+                                <span>${q.isOpen ? 'เปิดให้ตอบ' : 'ปิด'}</span>
+                            </button>
+                        </td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded bg-slate-800 text-emerald-400 border border-slate-700">${q.category}</span></td>
+                        <td class="p-3 max-w-xs truncate text-white font-medium">${q.question}</td>
+                        <td class="p-3 font-semibold text-emerald-400">${labels[q.correct]}: ${q.options[q.correct]}</td>
+                        <td class="p-3 text-right space-x-2">
+                            <button onclick="app.openQuestionModal(${idx})" class="text-slate-400 hover:text-emerald-400"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button onclick="app.deleteQuestion(${idx})" class="text-slate-400 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            openQuestionModal(editIdx = -1) {
+                document.getElementById('qEditIndex').value = editIdx;
+                if (editIdx >= 0) {
+                    const q = this.questions[editIdx];
+                    document.getElementById('modalQuestionTitle').innerText = 'แก้ไขคำถาม';
+                    document.getElementById('qCategory').value = q.category;
+                    document.getElementById('qText').value = q.question;
+                    document.getElementById('qOptA').value = q.options[0];
+                    document.getElementById('qOptB').value = q.options[1];
+                    document.getElementById('qOptC').value = q.options[2];
+                    document.getElementById('qOptD').value = q.options[3];
+                    document.getElementById('qCorrect').value = q.correct;
+                } else {
+                    document.getElementById('modalQuestionTitle').innerText = 'เพิ่มคำถามใหม่';
+                    document.getElementById('formQuestion').reset();
+                }
+                document.getElementById('modalQuestion').classList.remove('hidden');
+            }
+
+            closeQuestionModal() {
+                document.getElementById('modalQuestion').classList.add('hidden');
+            }
+
+            saveQuestion(e) {
+                e.preventDefault();
+                const editIdx = parseInt(document.getElementById('qEditIndex').value);
+                const qObj = {
+                    id: editIdx >= 0 ? this.questions[editIdx].id : 'q_' + Date.now(),
+                    category: document.getElementById('qCategory').value.trim(),
+                    question: document.getElementById('qText').value.trim(),
+                    options: [
+                        document.getElementById('qOptA').value.trim(),
+                        document.getElementById('qOptB').value.trim(),
+                        document.getElementById('qOptC').value.trim(),
+                        document.getElementById('qOptD').value.trim(),
+                    ],
+                    correct: parseInt(document.getElementById('qCorrect').value),
+                    isOpen: editIdx >= 0 ? this.questions[editIdx].isOpen : true
+                };
+
+                if (editIdx >= 0) {
+                    this.questions[editIdx] = qObj;
+                } else {
+                    this.questions.push(qObj);
+                }
+
+                localStorage.setItem('kaizen_questions', JSON.stringify(this.questions));
+                this.renderAdminQuestionTable();
+                this.syncQuestionsToGas();
+                this.closeQuestionModal();
+            }
+
+            deleteQuestion(idx) {
+                if (confirm('ยืนยันลบคำถามข้อนี้?')) {
+                    this.questions.splice(idx, 1);
+                    localStorage.setItem('kaizen_questions', JSON.stringify(this.questions));
+                    this.renderAdminQuestionTable();
+                    this.syncQuestionsToGas();
+                }
+            }
+
+            renderAdminUserTable() {
+                const tbody = document.getElementById('adminUserTableBody');
+                tbody.innerHTML = '';
+                document.getElementById('adminUserCount').innerText = this.users.length;
+
+                this.users.forEach(u => {
+                    const uAnswers = this.userAnswers.filter(a => a.empId === u.empId);
+                    const totalScore = uAnswers.reduce((sum, a) => sum + (parseInt(a.points) || 0), 0);
+
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-800/40 transition';
+                    tr.innerHTML = `
+                        <td class="p-3 font-mono text-emerald-400 font-bold">${u.empId}</td>
+                        <td class="p-3 font-semibold text-white">${u.fullName}</td>
+                        <td class="p-3 text-slate-400">${u.dept}</td>
+                        <td class="p-3 font-mono">${uAnswers.length}</td>
+                        <td class="p-3 text-right font-bold text-emerald-400">${totalScore}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            exportToCSV() {
+                if (this.users.length === 0) return alert('ไม่มีข้อมูลสำหรับส่งออก');
+
+                let csvContent = "\uFEFF";
+                csvContent += "EmpID,FullName,Department,AnswersCount,TotalScore\n";
+
+                this.users.forEach(u => {
+                    const uAnswers = this.userAnswers.filter(a => a.empId === u.empId);
+                    const totalScore = uAnswers.reduce((sum, a) => sum + (parseInt(a.points) || 0), 0);
+                    csvContent += `"${u.empId}","${u.fullName}","${u.dept}",${uAnswers.length},${totalScore}\n`;
+                });
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", `kaizen_quiz_report_${new Date().toISOString().slice(0,10)}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            // Backend GAS Synchronization Helpers
+            sendToGas(payload) {
+                if (!this.gasUrl) return;
+                fetch(this.gasUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }).catch(err => console.log('GAS Post Error:', err));
+            }
+
+            syncQuestionsToGas() {
+                this.sendToGas({ action: 'syncQuestions', questions: this.questions });
+            }
+
+            fetchInitData() {
+                if (!this.gasUrl) return;
+                fetch(this.gasUrl)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.status === 'success') {
+                            if (data.users && Array.isArray(data.users)) {
+                                this.users = data.users.map(u => ({ empId: u.EmpID, fullName: u.FullName, dept: u.Department }));
+                                localStorage.setItem('kaizen_users', JSON.stringify(this.users));
+                            }
+                            if (data.answers && Array.isArray(data.answers)) {
+                                this.userAnswers = data.answers.map(a => ({
+                                    empId: a.EmpID,
+                                    questionId: a.QuestionID,
+                                    selectedOption: parseInt(a.SelectedOption),
+                                    isCorrect: a.IsCorrect === true || a.IsCorrect === 'true',
+                                    points: parseInt(a.Points) || 0
+                                }));
+                                localStorage.setItem('kaizen_user_answers', JSON.stringify(this.userAnswers));
+                            }
+                            if (data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
+                                this.questions = data.questions.map(q => ({
+                                    id: q.ID,
+                                    category: q.Category,
+                                    question: q.Question,
+                                    options: [q.OptionA, q.OptionB, q.OptionC, q.OptionD],
+                                    correct: parseInt(q.Correct),
+                                    isOpen: q.IsOpen === true || q.IsOpen === 'true'
+                                }));
+                                localStorage.setItem('kaizen_questions', JSON.stringify(this.questions));
+                            }
+
+                            if (this.currentUser) this.showPlayerDashboard();
+                            this.renderLeaderboard();
+                        }
+                    })
+                    .catch(err => console.log('Fetch init error:', err));
+            }
+
+            openGasModal() {
+                document.getElementById('inputGasUrl').value = this.gasUrl;
+                document.getElementById('modalGasSetup').classList.remove('hidden');
+            }
+
+            closeGasModal() {
+                document.getElementById('modalGasSetup').classList.add('hidden');
+            }
+
+            saveGasUrl() {
+                const url = document.getElementById('inputGasUrl').value.trim();
+                this.gasUrl = url || DEFAULT_GAS_URL;
+                localStorage.setItem('kaizen_gas_url', this.gasUrl);
+                this.closeGasModal();
+                alert('บันทึก Web App URL เรียบร้อยแล้ว!');
+            }
+
+            resetDefaultUrl() {
+                this.gasUrl = DEFAULT_GAS_URL;
+                document.getElementById('inputGasUrl').value = DEFAULT_GAS_URL;
+                localStorage.removeItem('kaizen_gas_url');
+                alert('คืนค่า URL เริ่มต้นเรียบร้อยแล้ว!');
+            }
+        }
+
+        let app;
+        window.addEventListener('DOMContentLoaded', () => {
+            app = new KaizenApp();
+        });
+    </script>
+</body>
+</html>
